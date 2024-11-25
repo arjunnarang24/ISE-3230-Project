@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 
-file_path = r"C:\Users\arjun\Downloads\final_cota_stop_density_counts.csv"
+file_path = final_cota_stop_density_counts.csv"
 df = pd.read_csv(file_path)
 
 # Extract relevant data from the dataframe
