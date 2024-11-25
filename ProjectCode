@@ -1,0 +1,60 @@
+import pandas as pd
+import numpy as np
+import cvxpy as cp
+
+file_path = r"C:\Users\arjun\Downloads\final_cota_stop_density_counts.csv"
+df = pd.read_csv(file_path)
+
+# Extract relevant data from the dataframe
+places = df['neighborhood'].tolist()
+population_density = df['density'].values  # Population density
+nearby_stops = df['stop_count'].values  # Existing bus stops
+
+# Define base cost, budget, and scaling factor
+base_cost = 15000  # Base cost per stop
+scaling_factor = 10  # Cost increases by $10 per unit of density
+budget = 250000  # Total budget
+
+# Compute costs based on population density with a gradual scaling factor
+cost = base_cost + scaling_factor * population_density
+
+# Define the max and min number of stops
+max_stops = 5  # Maximum number of stops to place
+min_stops = 3  # Minimum number of stops to place
+
+# Decision variable: x[i] = 1 if a bus stop is placed at location i
+num_locations = len(places)
+x = cp.Variable(num_locations, boolean=True)
+
+# Objective: Maximize population served per dollar, weighted by existing stops
+objective = cp.Maximize(cp.sum(population_density / (cost * (nearby_stops + 1)) * x))
+
+# Constraints
+constraints = [
+    cp.sum(x) <= max_stops,  # Maximum number of stops
+    cp.sum(x) >= min_stops,  # Minimum number of stops
+    cp.sum(cost * x) <= budget,  # Budget constraint
+]
+
+# Add the minimum population density threshold constraint
+P_min = 500  # Example threshold for minimum population density
+for i in range(num_locations):
+    if population_density[i] < P_min:
+        constraints.append(x[i] == 0)  # Prevent selection if density is below threshold
+
+# Solve the problem
+problem = cp.Problem(objective, constraints)
+result = problem.solve(solver=cp.GUROBI)
+
+# Check the solution feasibility and interpret the result
+solution = x.value
+
+if solution is not None:  # Check if a solution was found
+    selected_places = [places[i] for i, val in enumerate(solution) if val > 0.5]
+    print("Optimal Solution Found:")
+    for i, val in enumerate(solution):
+        print(f"{places[i]}: {'Place Stop' if val > 0.5 else 'No Stop'}")
+    print(f"Objective Value (Total Weighted Efficiency): {problem.value}")
+    print(f"The best places to add bus stops are: {', '.join(selected_places)}")
+else:
+    print("No feasible solution found. Check constraints or budget.")
